@@ -99,6 +99,7 @@ Content-Type: application/json
 | `doubao-seedance-1-5-pro-251215` | Seedance 1.5 Pro |
 | `doubao-seedance-2-0-260128` | Seedance 2.0 Pro |
 | `doubao-seedance-2-0-fast-260128` | Seedance 2.0 Fast |
+| `doubao-seedance-2-0-mini-260615` | Seedance 2.0 Mini |
 
 ### 响应
 

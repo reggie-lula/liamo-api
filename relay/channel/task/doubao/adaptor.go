@@ -211,6 +211,10 @@ func estimateSeedanceBilling(c *gin.Context, info *relaycommon.RelayInfo) map[st
 	if priceMap, ok := GetSeedanceTierPrice(info.OriginModelName); ok {
 		if p, ok := priceMap[key]; ok {
 			tierPrice = p
+		} else if p, ok := priceMap[tierKey(hasVideo, tierLow)]; ok {
+			tierPrice = p
+		} else if p, ok := priceMap["low"]; ok {
+			tierPrice = p
 		}
 	}
 	if tierPrice <= 0 {

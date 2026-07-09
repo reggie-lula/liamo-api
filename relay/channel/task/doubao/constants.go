@@ -9,6 +9,7 @@ var ModelList = []string{
 	"doubao-seedance-1-5-pro-251215",
 	"doubao-seedance-2-0-260128",
 	"doubao-seedance-2-0-fast-260128",
+	"doubao-seedance-2-0-mini-260615",
 }
 
 var ChannelName = "doubao-video"
@@ -35,6 +36,10 @@ var videoPriceTable = map[string]map[videoPriceKey]float64{
 	"doubao-seedance-2-0-fast-260128": {
 		{hasVideo: false}: 37.0,
 		{hasVideo: true}:  22.0,
+	},
+	"doubao-seedance-2-0-mini-260615": {
+		{hasVideo: false}: 23.0,
+		{hasVideo: true}:  14.0,
 	},
 }
 
@@ -72,10 +77,12 @@ var seedanceTierPriceMap = map[string]map[string]float64{
 		"ultra_video": 16.0, // 4k 有视频
 	},
 	"doubao-seedance-2-0-fast-260128": {
-		"low":        37.0, // 480p/720p 无视频
-		"low_video":  22.0, // 480p/720p 有视频
-		"high":       51.0, // 1080p 无视频
-		"high_video": 31.0, // 1080p 有视频
+		"low":       37.0, // 480p/720p 无视频
+		"low_video": 22.0, // 480p/720p 有视频
+	},
+	"doubao-seedance-2-0-mini-260615": {
+		"low":       23.0, // 480p/720p 无视频
+		"low_video": 14.0, // 480p/720p 有视频
 	},
 }
 
