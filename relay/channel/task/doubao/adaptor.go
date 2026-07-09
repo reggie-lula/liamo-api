@@ -54,13 +54,15 @@ type requestPayload struct {
 	Tools                 []struct {
 		Type string `json:"type,omitempty"`
 	} `json:"tools,omitempty"`
-	Resolution  string         `json:"resolution,omitempty"`
-	Ratio       string         `json:"ratio,omitempty"`
-	Duration    *dto.IntValue  `json:"duration,omitempty"`
-	Frames      *dto.IntValue  `json:"frames,omitempty"`
-	Seed        *dto.IntValue  `json:"seed,omitempty"`
-	CameraFixed *dto.BoolValue `json:"camera_fixed,omitempty"`
-	Watermark   *dto.BoolValue `json:"watermark,omitempty"`
+	SafetyIdentifier string         `json:"safety_identifier,omitempty"`
+	Priority         *dto.IntValue  `json:"priority,omitempty"`
+	Resolution       string         `json:"resolution,omitempty"`
+	Ratio            string         `json:"ratio,omitempty"`
+	Duration         *dto.IntValue  `json:"duration,omitempty"`
+	Frames           *dto.IntValue  `json:"frames,omitempty"`
+	Seed             *dto.IntValue  `json:"seed,omitempty"`
+	CameraFixed      *dto.BoolValue `json:"camera_fixed,omitempty"`
+	Watermark        *dto.BoolValue `json:"watermark,omitempty"`
 }
 
 type responsePayload struct {
@@ -153,16 +155,13 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInf
 	if err != nil {
 		return nil
 	}
-	if hasVideoInMetadata(req.Metadata) {
-		ratioMap, ok := GetResolutionVideoRatio(info.OriginModelName)
-		if !ok {
-			return nil
-		}
-		if ratio, ok := ratioMap["low_video"]; ok {
-			return map[string]float64{"video_resolution_input": ratio}
-		}
+	hasVideo := hasVideoInMetadata(req.Metadata)
+	resolution, _ := req.Metadata["resolution"].(string)
+	ratio, ok := GetVideoInputRatio(info.OriginModelName, resolution, hasVideo)
+	if !ok || ratio == 1.0 {
+		return nil
 	}
-	return nil
+	return map[string]float64{"video_input": ratio}
 }
 
 // estimateSeedanceBilling 预扣费，直接使用官方分档价格（¥/百万tokens）：
@@ -268,6 +267,14 @@ var seedanceDimensions = map[string]map[string][2]int{
 		"3:4":  {1248, 1664},
 		"9:16": {1080, 1920},
 	},
+	"4k": {
+		"21:9": {4412, 1892},
+		"16:9": {3840, 2160},
+		"4:3":  {3328, 2496},
+		"1:1":  {2880, 2880},
+		"3:4":  {2496, 3328},
+		"9:16": {2160, 3840},
+	},
 }
 
 // resolveSeedanceDimensions 根据 resolution 和 aspectRatio 查表获取确切宽高。
@@ -291,13 +298,17 @@ func resolveSeedanceDimensions(resolution, aspectRatio string) (width, height in
 type resolutionTier int
 
 const (
-	tierLow  resolutionTier = iota // 480p / 720p（默认）
-	tierHigh                       // 1080p
+	tierLow   resolutionTier = iota // 480p / 720p（默认）
+	tierHigh                        // 1080p
+	tierUltra                       // 4k
 )
 
 // resolveResolutionTier 根据 resolution 字段判断档位。
 func resolveResolutionTier(resolution string) resolutionTier {
 	r := strings.ToLower(strings.TrimSpace(resolution))
+	if r == "4k" {
+		return tierUltra
+	}
 	if r == "1080p" {
 		return tierHigh
 	}
@@ -307,10 +318,16 @@ func resolveResolutionTier(resolution string) resolutionTier {
 // tierKey 组合 hasVideo 和 resolutionTier 生成比率映射 key。
 func tierKey(hasVideo bool, tier resolutionTier) string {
 	if hasVideo {
+		if tier == tierUltra {
+			return "ultra_video"
+		}
 		if tier == tierHigh {
 			return "high_video"
 		}
 		return "low_video"
+	}
+	if tier == tierUltra {
+		return "ultra"
 	}
 	if tier == tierHigh {
 		return "high"
