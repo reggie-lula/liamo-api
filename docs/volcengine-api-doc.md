@@ -31,6 +31,11 @@ Authorization: Bearer <your-api-key>
 Content-Type: application/json
 ```
 
+`project_name` 表示火山引擎资源项目，而不是素材组名称。网关会为每个素材组保存
+`group_id + channel_id + project_name` 映射；带 `group_id` 的操作始终以该映射为权威，
+显式传入的 `project_name` 仅用于一致性校验。用户存在多个项目时，列表及仅带素材
+`id` 的接口必须显式指定 `project_name`。
+
 ---
 
 ## 2. /s1/asset — Ark Asset API（真人头像）
@@ -422,6 +427,7 @@ Content-Type: application/json
 | `page_size` | int | 否 | 每页数量 |
 | `sort_by` | string | 否 | 排序字段 |
 | `sort_order` | string | 否 | 排序方向 |
+| `project_name` | string | 否 | 项目名称；用户存在多个项目时必填 |
 
 **响应字段**: 与 `/s1/asset/assets/list` 相同。
 

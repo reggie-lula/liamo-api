@@ -45,6 +45,8 @@ func TestMain(m *testing.M) {
 		&model.Token{},
 		&model.Log{},
 		&model.Channel{},
+		&model.AssetGroupMapping{},
+		&model.AIGCAssetGroupMapping{},
 		&model.TopUp{},
 		&model.UserSubscription{},
 		&model.SystemTask{},
@@ -68,6 +70,8 @@ func truncate(t *testing.T) {
 		model.DB.Exec("DELETE FROM tokens")
 		model.DB.Exec("DELETE FROM logs")
 		model.DB.Exec("DELETE FROM channels")
+		model.DB.Exec("DELETE FROM asset_group_mappings")
+		model.DB.Exec("DELETE FROM aigc_asset_group_mappings")
 		model.DB.Exec("DELETE FROM top_ups")
 		model.DB.Exec("DELETE FROM user_subscriptions")
 		model.DB.Exec("DELETE FROM system_task_locks")

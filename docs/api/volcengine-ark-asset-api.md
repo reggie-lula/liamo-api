@@ -26,7 +26,9 @@
 - 所有下游用户共享平台方的同一套火山引擎 AK/SK
 - 网关层通过 `user_id` 自动将用户与火山引擎 Asset Group 绑定
 - 用户只能查看和操作自己名下的素材资产，**无法看到其他用户的素材**
-- 请求中**无需传 `channel_id` 或 `project_name`**，网关自动从当前用户的 Token 中解析身份
+- 请求中无需传 `channel_id`；所有接口均可显式传 `project_name`。创建认证会话或素材组时不传则使用 `default`，已有 Group 的操作不传则使用本地映射值
+- 带 `group_id` 的操作会以本地 `(user_id, group_id)` 映射中的 Channel 和 Project 为权威；显式传入的 `project_name` 必须与映射一致
+- 当同一用户的素材组跨多个 Project 时，列表及仅带素材 `id` 的接口必须显式传 `project_name`，避免项目歧义
 
 ## 前置准备
 
@@ -60,13 +62,15 @@
 
 ```json
 {
-  "callback_url": "https://your-domain.com/callback"
+  "callback_url": "https://your-domain.com/callback",
+  "project_name": "INSTA-TV"
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | callback_url | string | 是 | 认证结束后跳转的回调地址 |
+| project_name | string | 否 | 火山资源项目名称，默认 `default`；查询认证结果时须使用相同值 |
 
 **响应示例**：
 
@@ -100,13 +104,15 @@
 
 ```json
 {
-  "byted_token": "20260331145619CA67F03F8F*****"
+  "byted_token": "20260331145619CA67F03F8F*****",
+  "project_name": "INSTA-TV"
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | byted_token | string | 是 | 认证凭证（有效期 120 秒） |
+| project_name | string | 否 | 火山资源项目名称，必须与创建认证会话时一致 |
 
 **响应示例**：
 
@@ -164,7 +170,8 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
   "group_id": "group-20260318070359-*****",
   "url": "https://example.com/image.jpg",
   "asset_type": "Image",
-  "name": "全身参考图"
+  "name": "全身参考图",
+  "project_name": "INSTA-TV"
 }
 ```
 
@@ -174,6 +181,7 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
 | url | string | 是 | 素材可访问的 URL |
 | asset_type | string | 是 | 素材类型：`Image` / `Video` / `Audio` |
 | name | string | 否 | 素材名称，可用于模糊搜索 |
+| project_name | string | 否 | 项目名称；若传入，必须与 `group_id` 的本地映射一致 |
 
 **响应示例**：
 
@@ -519,7 +527,8 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
   "group_id": "group-20260318070359-*****",
   "url": "https://example.com/image.jpg",
   "asset_type": "Image",
-  "name": "全身参考图"
+  "name": "全身参考图",
+  "project_name": "INSTA-TV"
 }
 ```
 
@@ -529,6 +538,7 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
 | url | string | 是 | 素材可访问的 URL |
 | asset_type | string | 是 | 素材类型：`Image` / `Video` / `Audio` |
 | name | string | 否 | 素材名称，可用于模糊搜索 |
+| project_name | string | 否 | 项目名称；若传入，必须与 `group_id` 的本地映射一致 |
 
 **响应示例**：
 
@@ -566,7 +576,8 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
   "page_number": 1,
   "page_size": 10,
   "sort_by": "CreateTime",
-  "sort_order": "Desc"
+  "sort_order": "Desc",
+  "project_name": "INSTA-TV"
 }
 ```
 
@@ -579,6 +590,7 @@ https://your-domain.com/callback?bytedToken=xxx&resultCode=10000&algorithmBaseRe
 | page_size | int | 否 | 每页数量，默认 10 |
 | sort_by | string | 否 | 排序字段：`CreateTime` / `UpdateTime` / `GroupId` |
 | sort_order | string | 否 | 排序方向：`Asc` / `Desc` |
+| project_name | string | 否 | 项目名称；用户存在多个项目时必填 |
 
 > 注：系统会自动注入当前用户绑定的 `group_ids` 过滤条件。
 

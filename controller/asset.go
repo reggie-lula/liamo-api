@@ -16,7 +16,7 @@ func CreateVisualValidateSession(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.CreateVisualValidateSession(c.Request.Context(), userId, req.CallbackURL)
+	resp, err := service.CreateVisualValidateSession(c.Request.Context(), userId, req.CallbackURL, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -32,7 +32,7 @@ func GetVisualValidateResult(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.GetVisualValidateResult(c.Request.Context(), userId, req.BytedToken)
+	resp, err := service.GetVisualValidateResult(c.Request.Context(), userId, req.BytedToken, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -48,7 +48,7 @@ func CreateAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.CreateAsset(c.Request.Context(), userId, req.GroupID, req.URL, req.AssetType, req.Name)
+	resp, err := service.CreateAsset(c.Request.Context(), userId, req.GroupID, req.URL, req.AssetType, req.Name, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -65,14 +65,15 @@ func ListAssets(c *gin.Context) {
 	}
 	userId := c.GetInt("id")
 	input := &service.ListAssetsInput{
-		GroupIDs:   req.GroupIDs,
-		GroupType:  req.GroupType,
-		Statuses:   req.Statuses,
-		Name:       req.Name,
-		PageNumber: req.PageNumber,
-		PageSize:   req.PageSize,
-		SortBy:     req.SortBy,
-		SortOrder:  req.SortOrder,
+		GroupIDs:    req.GroupIDs,
+		GroupType:   req.GroupType,
+		Statuses:    req.Statuses,
+		Name:        req.Name,
+		ProjectName: req.ProjectName,
+		PageNumber:  req.PageNumber,
+		PageSize:    req.PageSize,
+		SortBy:      req.SortBy,
+		SortOrder:   req.SortOrder,
 	}
 	resp, err := service.ListAssets(c.Request.Context(), userId, input)
 	if err != nil {
@@ -90,7 +91,7 @@ func GetAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.GetAsset(c.Request.Context(), userId, req.ID)
+	resp, err := service.GetAsset(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -106,7 +107,7 @@ func UpdateAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.UpdateAsset(c.Request.Context(), userId, req.ID, req.Name)
+	resp, err := service.UpdateAsset(c.Request.Context(), userId, req.ID, req.Name, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -122,7 +123,7 @@ func DeleteAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.DeleteAsset(c.Request.Context(), userId, req.ID)
+	resp, err := service.DeleteAsset(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -139,13 +140,14 @@ func ListAssetGroups(c *gin.Context) {
 	}
 	userId := c.GetInt("id")
 	input := &service.ListAssetGroupsInput{
-		Name:       req.Name,
-		GroupIDs:   req.GroupIDs,
-		GroupType:  req.GroupType,
-		PageNumber: req.PageNumber,
-		PageSize:   req.PageSize,
-		SortBy:     req.SortBy,
-		SortOrder:  req.SortOrder,
+		Name:        req.Name,
+		GroupIDs:    req.GroupIDs,
+		GroupType:   req.GroupType,
+		ProjectName: req.ProjectName,
+		PageNumber:  req.PageNumber,
+		PageSize:    req.PageSize,
+		SortBy:      req.SortBy,
+		SortOrder:   req.SortOrder,
 	}
 	resp, err := service.ListAssetGroups(c.Request.Context(), userId, input)
 	if err != nil {
@@ -163,7 +165,7 @@ func GetAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.GetAssetGroup(c.Request.Context(), userId, req.ID)
+	resp, err := service.GetAssetGroup(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -179,7 +181,7 @@ func UpdateAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.UpdateAssetGroup(c.Request.Context(), userId, req.ID, req.Name, req.Title, req.Description)
+	resp, err := service.UpdateAssetGroup(c.Request.Context(), userId, req.ID, req.Name, req.Title, req.Description, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -195,7 +197,7 @@ func DeleteAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.DeleteAssetGroup(c.Request.Context(), userId, req.ID)
+	resp, err := service.DeleteAssetGroup(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return

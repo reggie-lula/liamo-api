@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/volcengine/volcengine-go-sdk/volcengine"
 	"github.com/volcengine/volcengine-go-sdk/volcengine/credentials"
@@ -51,6 +52,15 @@ func CallArkAPI(ctx context.Context, channel *model.Channel, action string, reqB
 	}
 
 	client := universal.New(sess)
+	logger.LogDebug(
+		ctx,
+		"volcengine asset request action=%s channel_id=%d project_name=%v group_id=%v resource_id=%v",
+		action,
+		channel.Id,
+		reqBody["ProjectName"],
+		reqBody["GroupId"],
+		reqBody["Id"],
+	)
 
 	resp, err := client.DoCall(
 		universal.RequestUniversal{
@@ -87,31 +97,52 @@ func ParseVolcengineAssetAuth(key string) (accessKey, secretKey string, err erro
 	return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]), nil
 }
 
-// resolveChannelForUser 获取平台默认 VolcEngine channel 和用户的 project name
-func resolveChannelForUser(userId int) (*model.Channel, string, error) {
-	mapping, err := model.GetUserAssetGroupMapping(userId)
+func getUserAssetBindings(userId int) ([]volcAssetGroupBinding, error) {
+	mappings, err := model.GetUserAssetGroupMappings(userId)
 	if err != nil {
-		return nil, "", fmt.Errorf("query user mapping failed: %w", err)
+		return nil, fmt.Errorf("query user asset group mappings failed: %w", err)
 	}
-	if mapping == nil || mapping.ChannelId == 0 {
-		// 用户尚未绑定，尝试获取平台第一个可用的 VolcEngine channel
-		var channels []*model.Channel
-		err := model.DB.Where("type = ? and status = ? limit 1", 45, 1).Find(&channels).Error
-		if err != nil || len(channels) == 0 {
-			return nil, "", fmt.Errorf("no volcengine channel configured, please contact admin")
-		}
-		return channels[0], "default", nil
+	bindings := make([]volcAssetGroupBinding, 0, len(mappings))
+	for _, mapping := range mappings {
+		bindings = append(bindings, volcAssetGroupBinding{
+			GroupID:     mapping.GroupId,
+			ChannelID:   mapping.ChannelId,
+			ProjectName: mapping.VolcProjectName,
+		})
 	}
+	return bindings, nil
+}
 
-	channel, err := model.GetChannelById(mapping.ChannelId, true)
+func resolveChannelForProject(userId int, requestedProjectName string) (*model.Channel, string, error) {
+	bindings, err := getUserAssetBindings(userId)
 	if err != nil {
-		return nil, "", fmt.Errorf("get channel failed: %w", err)
+		return nil, "", err
 	}
-	projectName := mapping.VolcProjectName
-	if projectName == "" {
-		projectName = "default"
+	return resolveVolcEngineChannelForProject(bindings, requestedProjectName)
+}
+
+func resolveChannelForGroup(userId int, groupID, requestedProjectName string) (*model.Channel, string, error) {
+	mapping, err := model.GetAssetGroupMapping(userId, groupID)
+	if err != nil {
+		return nil, "", fmt.Errorf("query asset group mapping failed: %w", err)
 	}
-	return channel, projectName, nil
+	if mapping == nil {
+		return nil, "", fmt.Errorf("asset group %s does not belong to current user", groupID)
+	}
+	return resolveMappedVolcEngineChannel(volcAssetGroupBinding{
+		GroupID:     mapping.GroupId,
+		ChannelID:   mapping.ChannelId,
+		ProjectName: mapping.VolcProjectName,
+	}, requestedProjectName)
+}
+
+func resolveChannelForUserAssetProject(userId int, requestedProjectName string) (*model.Channel, string, error) {
+	bindings, err := getUserAssetBindings(userId)
+	if err != nil {
+		return nil, "", err
+	}
+	channel, projectName, _, err := resolveVolcAssetGroupScope(bindings, requestedProjectName, nil)
+	return channel, projectName, err
 }
 
 // CreateUserAssetMapping 在用户完成真人认证后创建映射
@@ -121,6 +152,9 @@ func CreateUserAssetMapping(userId int, groupId string, channelId int, projectNa
 		return nil, err
 	}
 	if existing != nil {
+		if existing.ChannelId != channelId || normalizeVolcProjectName(existing.VolcProjectName) != normalizeVolcProjectName(projectName) {
+			return nil, fmt.Errorf("asset group %s mapping conflicts with channel or project", groupId)
+		}
 		return existing, nil // 该 group_id 已存在，直接返回
 	}
 
@@ -128,7 +162,7 @@ func CreateUserAssetMapping(userId int, groupId string, channelId int, projectNa
 		UserId:          userId,
 		GroupId:         groupId,
 		ChannelId:       channelId,
-		VolcProjectName: projectName,
+		VolcProjectName: normalizeVolcProjectName(projectName),
 	}
 	if err := model.InsertAssetGroupMapping(mapping); err != nil {
 		return nil, fmt.Errorf("insert asset group mapping failed: %w", err)
@@ -136,32 +170,27 @@ func CreateUserAssetMapping(userId int, groupId string, channelId int, projectNa
 	return mapping, nil
 }
 
-// ensureUserMapping 确保用户有映射，无则自动分配 channel
-func ensureUserMapping(ctx context.Context, userId int) (*model.Channel, string, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
-	if err != nil {
-		return nil, "", err
-	}
-	return channel, projectName, nil
-}
-
 // GetGroupIDsForUser 获取用户拥有的所有 group IDs，用于自动过滤
 func GetGroupIDsForUser(userId int) ([]string, error) {
-	mapping, err := model.GetUserAssetGroupMapping(userId)
+	mappings, err := model.GetUserAssetGroupMappings(userId)
 	if err != nil {
 		return nil, err
 	}
-	if mapping == nil {
+	if len(mappings) == 0 {
 		return nil, fmt.Errorf("user %d has not completed liveness verification yet", userId)
 	}
-	return []string{mapping.GroupId}, nil
+	groupIDs := make([]string, 0, len(mappings))
+	for _, mapping := range mappings {
+		groupIDs = append(groupIDs, mapping.GroupId)
+	}
+	return groupIDs, nil
 }
 
 // ---- 业务方法 ----
 
 // CreateVisualValidateSession 创建真人认证会话
-func CreateVisualValidateSession(ctx context.Context, userId int, callbackURL string) (map[string]any, error) {
-	channel, projectName, err := ensureUserMapping(ctx, userId)
+func CreateVisualValidateSession(ctx context.Context, userId int, callbackURL, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForProject(userId, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +203,8 @@ func CreateVisualValidateSession(ctx context.Context, userId int, callbackURL st
 }
 
 // GetVisualValidateResult 获取认证结果并自动创建映射
-func GetVisualValidateResult(ctx context.Context, userId int, bytedToken string) (map[string]any, error) {
-	channel, projectName, err := ensureUserMapping(ctx, userId)
+func GetVisualValidateResult(ctx context.Context, userId int, bytedToken, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForProject(userId, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +221,8 @@ func GetVisualValidateResult(ctx context.Context, userId int, bytedToken string)
 	// 从响应结果中提取 GroupId，创建映射
 	if result, ok := resp["Result"].(map[string]any); ok {
 		if groupId, ok := result["GroupId"].(string); groupId != "" && ok {
-			existing, _ := model.GetUserAssetGroupMapping(userId)
-			if existing == nil {
-				_, _ = CreateUserAssetMapping(userId, groupId, channel.Id, projectName)
+			if _, err := CreateUserAssetMapping(userId, groupId, channel.Id, projectName); err != nil {
+				return nil, fmt.Errorf("liveness verification created group %s but failed to persist its mapping: %w", groupId, err)
 			}
 		}
 	}
@@ -203,44 +231,33 @@ func GetVisualValidateResult(ctx context.Context, userId int, bytedToken string)
 }
 
 // CreateAsset 创建素材
-func CreateAsset(ctx context.Context, userId int, groupID, assetURL, assetType, name string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func CreateAsset(ctx context.Context, userId int, groupID, assetURL, assetType, name, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForGroup(userId, groupID, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
-
-	reqBody := map[string]any{
-		"GroupId":     groupID,
-		"URL":         assetURL,
-		"AssetType":   assetType,
-		"ProjectName": projectName,
-	}
-	if name != "" {
-		reqBody["Name"] = name
-	}
-	return CallArkAPI(ctx, channel, "CreateAsset", reqBody)
+	return CallArkAPI(ctx, channel, "CreateAsset", buildCreateAssetRequest(groupID, assetURL, assetType, name, projectName))
 }
 
 type ListAssetsInput struct {
-	GroupIDs   []string
-	GroupType  string
-	Statuses   []string
-	Name       string
-	PageNumber int
-	PageSize   int
-	SortBy     string
-	SortOrder  string
+	GroupIDs    []string
+	GroupType   string
+	Statuses    []string
+	Name        string
+	ProjectName string
+	PageNumber  int
+	PageSize    int
+	SortBy      string
+	SortOrder   string
 }
 
 // ListAssets 查询素材列表（自动按用户隔离）
 func ListAssets(ctx context.Context, userId int, req *ListAssetsInput) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+	bindings, err := getUserAssetBindings(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	// 自动注入用户拥有的 group IDs
-	userGroupIDs, err := GetGroupIDsForUser(userId)
+	channel, projectName, userGroupIDs, err := resolveVolcAssetGroupScope(bindings, req.ProjectName, req.GroupIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -263,9 +280,7 @@ func ListAssets(ctx context.Context, userId int, req *ListAssetsInput) (map[stri
 	if req.Name != "" {
 		filter["Name"] = req.Name
 	}
-	if projectName != "" {
-		filter["ProjectName"] = projectName
-	}
+	reqBody["ProjectName"] = projectName
 	if req.PageNumber > 0 {
 		reqBody["PageNumber"] = req.PageNumber
 	}
@@ -282,8 +297,8 @@ func ListAssets(ctx context.Context, userId int, req *ListAssetsInput) (map[stri
 }
 
 // GetAsset 获取单个素材
-func GetAsset(ctx context.Context, userId int, id string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func GetAsset(ctx context.Context, userId int, id, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForUserAssetProject(userId, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -298,8 +313,8 @@ func GetAsset(ctx context.Context, userId int, id string) (map[string]any, error
 }
 
 // UpdateAsset 更新素材
-func UpdateAsset(ctx context.Context, userId int, id, name string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func UpdateAsset(ctx context.Context, userId int, id, name, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForUserAssetProject(userId, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -317,8 +332,8 @@ func UpdateAsset(ctx context.Context, userId int, id, name string) (map[string]a
 }
 
 // DeleteAsset 删除素材
-func DeleteAsset(ctx context.Context, userId int, id string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func DeleteAsset(ctx context.Context, userId int, id, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForUserAssetProject(userId, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -333,24 +348,23 @@ func DeleteAsset(ctx context.Context, userId int, id string) (map[string]any, er
 }
 
 type ListAssetGroupsInput struct {
-	Name       string
-	GroupIDs   []string
-	GroupType  string
-	PageNumber int
-	PageSize   int
-	SortBy     string
-	SortOrder  string
+	Name        string
+	GroupIDs    []string
+	GroupType   string
+	ProjectName string
+	PageNumber  int
+	PageSize    int
+	SortBy      string
+	SortOrder   string
 }
 
 // ListAssetGroups 查询素材组列表（自动按用户隔离）
 func ListAssetGroups(ctx context.Context, userId int, req *ListAssetGroupsInput) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+	bindings, err := getUserAssetBindings(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	// 自动注入用户拥有的 group IDs
-	userGroupIDs, err := GetGroupIDsForUser(userId)
+	channel, projectName, userGroupIDs, err := resolveVolcAssetGroupScope(bindings, req.ProjectName, req.GroupIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -370,9 +384,7 @@ func ListAssetGroups(ctx context.Context, userId int, req *ListAssetGroupsInput)
 	if req.Name != "" {
 		filter["Name"] = req.Name
 	}
-	if projectName != "" {
-		filter["ProjectName"] = projectName
-	}
+	reqBody["ProjectName"] = projectName
 	if req.PageNumber > 0 {
 		reqBody["PageNumber"] = req.PageNumber
 	}
@@ -389,8 +401,8 @@ func ListAssetGroups(ctx context.Context, userId int, req *ListAssetGroupsInput)
 }
 
 // GetAssetGroup 获取素材组
-func GetAssetGroup(ctx context.Context, userId int, id string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func GetAssetGroup(ctx context.Context, userId int, id, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForGroup(userId, id, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -405,8 +417,8 @@ func GetAssetGroup(ctx context.Context, userId int, id string) (map[string]any, 
 }
 
 // UpdateAssetGroup 更新素材组
-func UpdateAssetGroup(ctx context.Context, userId int, id, name, title, description string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func UpdateAssetGroup(ctx context.Context, userId int, id, name, title, description, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForGroup(userId, id, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -430,8 +442,8 @@ func UpdateAssetGroup(ctx context.Context, userId int, id, name, title, descript
 }
 
 // DeleteAssetGroup 删除素材组
-func DeleteAssetGroup(ctx context.Context, userId int, id string) (map[string]any, error) {
-	channel, projectName, err := resolveChannelForUser(userId)
+func DeleteAssetGroup(ctx context.Context, userId int, id, requestedProjectName string) (map[string]any, error) {
+	channel, projectName, err := resolveChannelForGroup(userId, id, requestedProjectName)
 	if err != nil {
 		return nil, err
 	}

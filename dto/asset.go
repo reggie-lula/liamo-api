@@ -2,6 +2,7 @@ package dto
 
 type CreateVisualValidateSessionReq struct {
 	CallbackURL string `json:"callback_url"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type CreateVisualValidateSessionResp struct {
@@ -11,7 +12,8 @@ type CreateVisualValidateSessionResp struct {
 }
 
 type GetVisualValidateResultReq struct {
-	BytedToken string `json:"byted_token"`
+	BytedToken  string `json:"byted_token"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type GetVisualValidateResultResp struct {
@@ -19,10 +21,11 @@ type GetVisualValidateResultResp struct {
 }
 
 type CreateAssetReq struct {
-	GroupID   string `json:"group_id"`
-	URL       string `json:"url"`
-	AssetType string `json:"asset_type"` // Image, Video, Audio
-	Name      string `json:"name,omitempty"`
+	GroupID     string `json:"group_id"`
+	URL         string `json:"url"`
+	AssetType   string `json:"asset_type"` // Image, Video, Audio
+	Name        string `json:"name,omitempty"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type CreateAssetResp struct {
@@ -30,14 +33,15 @@ type CreateAssetResp struct {
 }
 
 type ListAssetsReq struct {
-	GroupIDs  []string `json:"group_ids,omitempty"`
-	GroupType string   `json:"group_type,omitempty"` // LivenessFace
-	Statuses  []string `json:"statuses,omitempty"`   // Active, Processing, Failed
-	Name      string   `json:"name,omitempty"`
-	PageNumber int    `json:"page_number,omitempty"`
-	PageSize   int    `json:"page_size,omitempty"`
-	SortBy     string `json:"sort_by,omitempty"`
-	SortOrder  string `json:"sort_order,omitempty"`
+	GroupIDs    []string `json:"group_ids,omitempty"`
+	GroupType   string   `json:"group_type,omitempty"` // LivenessFace
+	Statuses    []string `json:"statuses,omitempty"`   // Active, Processing, Failed
+	Name        string   `json:"name,omitempty"`
+	ProjectName string   `json:"project_name,omitempty"`
+	PageNumber  int      `json:"page_number,omitempty"`
+	PageSize    int      `json:"page_size,omitempty"`
+	SortBy      string   `json:"sort_by,omitempty"`
+	SortOrder   string   `json:"sort_order,omitempty"`
 }
 
 type AssetDTO struct {
@@ -60,26 +64,30 @@ type ListAssetsResp struct {
 }
 
 type GetAssetReq struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type UpdateAssetReq struct {
-	ID   string `json:"id"`
-	Name string `json:"name,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name,omitempty"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type DeleteAssetReq struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type ListAssetGroupsReq struct {
-	Name       string   `json:"name,omitempty"`
-	GroupIDs   []string `json:"group_ids,omitempty"`
-	GroupType  string   `json:"group_type,omitempty"` // LivenessFace
-	PageNumber int      `json:"page_number,omitempty"`
-	PageSize   int      `json:"page_size,omitempty"`
-	SortBy     string   `json:"sort_by,omitempty"`
-	SortOrder  string   `json:"sort_order,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	GroupIDs    []string `json:"group_ids,omitempty"`
+	GroupType   string   `json:"group_type,omitempty"` // LivenessFace
+	ProjectName string   `json:"project_name,omitempty"`
+	PageNumber  int      `json:"page_number,omitempty"`
+	PageSize    int      `json:"page_size,omitempty"`
+	SortBy      string   `json:"sort_by,omitempty"`
+	SortOrder   string   `json:"sort_order,omitempty"`
 }
 
 type AssetGroupDTO struct {
@@ -101,7 +109,8 @@ type ListAssetGroupsResp struct {
 }
 
 type GetAssetGroupReq struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type UpdateAssetGroupReq struct {
@@ -109,8 +118,10 @@ type UpdateAssetGroupReq struct {
 	Name        string `json:"name,omitempty"`
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
+	ProjectName string `json:"project_name,omitempty"`
 }
 
 type DeleteAssetGroupReq struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	ProjectName string `json:"project_name,omitempty"`
 }
