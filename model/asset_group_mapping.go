@@ -41,6 +41,13 @@ func GetUserAssetGroupMapping(userId int) (*AssetGroupMapping, error) {
 	return mapping, nil
 }
 
+// GetUserAssetGroupMappings 获取用户绑定的全部真人素材组映射。
+func GetUserAssetGroupMappings(userId int) ([]AssetGroupMapping, error) {
+	var mappings []AssetGroupMapping
+	err := DB.Where("user_id = ?", userId).Order("id ASC").Find(&mappings).Error
+	return mappings, err
+}
+
 // GetAssetGroupMapping 按 user_id + group_id 查询映射（用于判重）
 func GetAssetGroupMapping(userId int, groupId string) (*AssetGroupMapping, error) {
 	mapping := &AssetGroupMapping{}

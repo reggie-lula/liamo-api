@@ -41,6 +41,13 @@ func GetUserAIGCAssetGroupMapping(userId int) (*AIGCAssetGroupMapping, error) {
 	return mapping, nil
 }
 
+// GetUserAIGCAssetGroupMappings 获取用户绑定的全部 AIGC 素材组映射。
+func GetUserAIGCAssetGroupMappings(userId int) ([]AIGCAssetGroupMapping, error) {
+	var mappings []AIGCAssetGroupMapping
+	err := DB.Where("user_id = ?", userId).Order("id ASC").Find(&mappings).Error
+	return mappings, err
+}
+
 // GetAIGCAssetGroupMapping 按 user_id + group_id 查询映射（用于判重）
 func GetAIGCAssetGroupMapping(userId int, groupId string) (*AIGCAssetGroupMapping, error) {
 	mapping := &AIGCAssetGroupMapping{}

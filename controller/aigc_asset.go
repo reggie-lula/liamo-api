@@ -33,10 +33,11 @@ func ListAIGCAssetGroups(c *gin.Context) {
 	}
 	userId := c.GetInt("id")
 	input := &service.ListAIGCAssetGroupsInput{
-		Name:       req.Name,
-		GroupType:  req.GroupType,
-		PageNumber: req.PageNumber,
-		PageSize:   req.PageSize,
+		Name:        req.Name,
+		GroupType:   req.GroupType,
+		ProjectName: req.ProjectName,
+		PageNumber:  req.PageNumber,
+		PageSize:    req.PageSize,
 	}
 	resp, err := service.ListAIGCAssetGroups(c.Request.Context(), userId, input)
 	if err != nil {
@@ -54,7 +55,7 @@ func GetAIGCAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.GetAIGCAssetGroup(c.Request.Context(), userId, req.ID)
+	resp, err := service.GetAIGCAssetGroup(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -70,7 +71,7 @@ func UpdateAIGCAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.UpdateAIGCAssetGroup(c.Request.Context(), userId, req.ID, req.Name, req.Title, req.Description)
+	resp, err := service.UpdateAIGCAssetGroup(c.Request.Context(), userId, req.ID, req.Name, req.Title, req.Description, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -86,7 +87,7 @@ func DeleteAIGCAssetGroup(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.DeleteAIGCAssetGroup(c.Request.Context(), userId, req.ID)
+	resp, err := service.DeleteAIGCAssetGroup(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -102,7 +103,7 @@ func CreateAIGCAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.CreateAIGCAsset(c.Request.Context(), userId, req.GroupID, req.URL, req.AssetType, req.Name)
+	resp, err := service.CreateAIGCAsset(c.Request.Context(), userId, req.GroupID, req.URL, req.AssetType, req.Name, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -119,14 +120,15 @@ func ListAIGCAssets(c *gin.Context) {
 	}
 	userId := c.GetInt("id")
 	input := &service.ListAIGCAssetsInput{
-		GroupIDs:   req.GroupIDs,
-		GroupType:  req.GroupType,
-		Statuses:   req.Statuses,
-		Name:       req.Name,
-		PageNumber: req.PageNumber,
-		PageSize:   req.PageSize,
-		SortBy:     req.SortBy,
-		SortOrder:  req.SortOrder,
+		GroupIDs:    req.GroupIDs,
+		GroupType:   req.GroupType,
+		Statuses:    req.Statuses,
+		Name:        req.Name,
+		ProjectName: req.ProjectName,
+		PageNumber:  req.PageNumber,
+		PageSize:    req.PageSize,
+		SortBy:      req.SortBy,
+		SortOrder:   req.SortOrder,
 	}
 	resp, err := service.ListAIGCAssets(c.Request.Context(), userId, input)
 	if err != nil {
@@ -144,7 +146,7 @@ func GetAIGCAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.GetAIGCAsset(c.Request.Context(), userId, req.ID)
+	resp, err := service.GetAIGCAsset(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -160,7 +162,7 @@ func UpdateAIGCAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.UpdateAIGCAsset(c.Request.Context(), userId, req.ID, req.Name)
+	resp, err := service.UpdateAIGCAsset(c.Request.Context(), userId, req.ID, req.Name, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -176,7 +178,7 @@ func DeleteAIGCAsset(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
-	resp, err := service.DeleteAIGCAsset(c.Request.Context(), userId, req.ID)
+	resp, err := service.DeleteAIGCAsset(c.Request.Context(), userId, req.ID, req.ProjectName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
