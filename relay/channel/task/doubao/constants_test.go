@@ -29,6 +29,15 @@ func TestSeedanceTierPriceMapLatestPricing(t *testing.T) {
 	require.Equal(t, 14.0, mini["low_video"])
 	require.NotContains(t, mini, "high")
 	require.NotContains(t, mini, "ultra")
+
+	newModel, ok := GetSeedanceTierPrice("doubao-seedance-2-5-260628")
+	require.True(t, ok)
+	require.Equal(t, 70.0, newModel["low"])
+	require.Equal(t, 42.0, newModel["low_video"])
+	require.Equal(t, 77.0, newModel["high"])
+	require.Equal(t, 46.0, newModel["high_video"])
+	require.NotContains(t, newModel, "ultra")
+	require.NotContains(t, newModel, "ultra_video")
 }
 
 func TestSeedanceVideoInputRatios(t *testing.T) {

@@ -84,6 +84,12 @@ var seedanceTierPriceMap = map[string]map[string]float64{
 		"low":       23.0, // 480p/720p 无视频
 		"low_video": 14.0, // 480p/720p 有视频
 	},
+	"doubao-seedance-2-5-260628": {
+		"low":        70.0, // 480p/720p 无视频
+		"low_video":  42.0, // 480p/720p 有视频
+		"high":       77.0, // 1080p 无视频
+		"high_video": 46.0, // 1080p 有视频
+	},
 }
 
 // GetSeedanceTierPrice 根据模型名获取种子舞官方分档价格映射。
