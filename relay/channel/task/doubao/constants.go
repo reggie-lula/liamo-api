@@ -1,6 +1,9 @@
 package doubao
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 var ModelList = []string{
 	"doubao-seedance-1-0-pro-250528",
@@ -96,4 +99,84 @@ var seedanceTierPriceMap = map[string]map[string]float64{
 func GetSeedanceTierPrice(modelName string) (map[string]float64, bool) {
 	m, ok := seedanceTierPriceMap[modelName]
 	return m, ok
+}
+
+// seedanceLimitedDiscountRule 描述自定义补丁维护的限时折扣。
+// 起止日期均按北京时间计算，并且首尾日期都包含在生效范围内。
+type seedanceLimitedDiscountRule struct {
+	modelName  string
+	startDate  time.Time
+	endDate    time.Time
+	tierKeys   map[string]struct{}
+	multiplier float64
+}
+
+var seedanceBeijingLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
+
+var seedanceLimitedDiscountRules = []seedanceLimitedDiscountRule{
+	{
+		modelName:  "doubao-seedance-2-0-mini-260615",
+		startDate:  time.Date(2026, time.August, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		endDate:    time.Date(2026, time.September, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		multiplier: 0.4,
+	},
+	{
+		modelName:  "doubao-seedance-2-0-fast-260128",
+		startDate:  time.Date(2026, time.August, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		endDate:    time.Date(2026, time.September, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		multiplier: 0.75,
+	},
+	{
+		modelName: "doubao-seedance-2-5-260628",
+		startDate: time.Date(2026, time.August, 18, 0, 0, 0, 0, seedanceBeijingLocation),
+		endDate:   time.Date(2026, time.September, 17, 0, 0, 0, 0, seedanceBeijingLocation),
+		tierKeys: map[string]struct{}{
+			"high":       {},
+			"high_video": {},
+		},
+		multiplier: 0.72,
+	},
+}
+
+// seedanceDiscountMultiplier 返回指定模型和分辨率档位在给定时间的限时折扣。
+// 空 tierKeys 表示该模型当前已配置的所有档位都适用。
+func seedanceDiscountMultiplier(modelName, tierKey string, now time.Time) float64 {
+	beijingNow := now.In(seedanceBeijingLocation)
+	currentDate := time.Date(
+		beijingNow.Year(),
+		beijingNow.Month(),
+		beijingNow.Day(),
+		0,
+		0,
+		0,
+		0,
+		seedanceBeijingLocation,
+	)
+
+	for _, rule := range seedanceLimitedDiscountRules {
+		if rule.modelName != modelName || currentDate.Before(rule.startDate) || currentDate.After(rule.endDate) {
+			continue
+		}
+		if len(rule.tierKeys) > 0 {
+			if _, ok := rule.tierKeys[tierKey]; !ok {
+				continue
+			}
+		}
+		return rule.multiplier
+	}
+	return 1.0
+}
+
+// GetSeedanceTierPriceWithDiscount 返回计费时应使用的有效分档价格。
+// GetSeedanceTierPrice 始终返回基础价，便于保留官方价格和记录；限时折扣只在计费路径中按当前北京时间叠加。
+func GetSeedanceTierPriceWithDiscount(modelName, tierKey string, now time.Time) (float64, bool) {
+	prices, ok := GetSeedanceTierPrice(modelName)
+	if !ok {
+		return 0, false
+	}
+	price, ok := prices[tierKey]
+	if !ok {
+		return 0, false
+	}
+	return price * seedanceDiscountMultiplier(modelName, tierKey, now), true
 }

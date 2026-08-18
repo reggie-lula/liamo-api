@@ -165,7 +165,7 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInf
 	return map[string]float64{"video_input": ratio}
 }
 
-// estimateSeedanceBilling 预扣费，直接使用官方分档价格（¥/百万tokens）：
+// estimateSeedanceBilling 预扣费，使用基础分档价格（¥/百万tokens），并按当前北京时间叠加自定义限时折扣：
 //
 //	quota = tokens / 1,000,000 × tierPrice × QuotaPerUnit × groupRatio
 //
@@ -203,20 +203,19 @@ func estimateSeedanceBilling(c *gin.Context, info *relaycommon.RelayInfo) map[st
 		return nil
 	}
 
-	// ---- 2) 直接获取分档价格（¥/百万tokens） ----
+	// ---- 2) 获取分档价格并叠加限时折扣（¥/百万tokens） ----
 	hasVideo := req.HasVideo()
 	tier := resolveResolutionTier(resolution)
 	key := tierKey(hasVideo, tier)
 
 	tierPrice := 0.0
-	if priceMap, ok := GetSeedanceTierPrice(info.OriginModelName); ok {
-		if p, ok := priceMap[key]; ok {
-			tierPrice = p
-		} else if p, ok := priceMap[tierKey(hasVideo, tierLow)]; ok {
-			tierPrice = p
-		} else if p, ok := priceMap["low"]; ok {
-			tierPrice = p
-		}
+	discountAt := time.Now()
+	if p, ok := GetSeedanceTierPriceWithDiscount(info.OriginModelName, key, discountAt); ok {
+		tierPrice = p
+	} else if p, ok := GetSeedanceTierPriceWithDiscount(info.OriginModelName, tierKey(hasVideo, tierLow), discountAt); ok {
+		tierPrice = p
+	} else if p, ok := GetSeedanceTierPriceWithDiscount(info.OriginModelName, "low", discountAt); ok {
+		tierPrice = p
 	}
 	if tierPrice <= 0 {
 		// fallback: 使用 basePrice
