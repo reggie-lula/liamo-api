@@ -10,7 +10,7 @@
 ## 变更内容
 
 ### 后端
-1. **constant/channel.go** — 新增 Channel 类型常量 `ChannelTypeVolcEngineAIGC = 58`（type=58）
+1. **constant/channel.go** — 复用现有火山方舟渠道 `ChannelTypeVolcEngine = 45`，不新增渠道类型
 2. **dto/aigc_asset.go** — 新建 AIGC 素材相关的请求/响应 DTO
 3. **model/aigc_asset_group_mapping.go** — 新建 AIGC Asset Group 用户映射 Model（独立于真人素材的 asset_group_mappings 表）
 4. **model/main.go** — 在 migrateDB() 和 migrateDBFast() 的 AutoMigrate 列表中注册 `AIGCAssetGroupMapping`
@@ -22,10 +22,7 @@
 10. **docs/api/volcengine-ark-asset-api.md** — 更新 API 文档，合并真人素材和虚拟人像两套流程为一份文档
 
 ### 前端
-1. **web/default/src/features/channels/constants.ts** — CHANNEL_TYPES 新增 58: 'VolcEngineAIGC'，CHANNEL_TYPE_DISPLAY_ORDER 增加 58
-2. **web/default/src/features/channels/lib/channel-utils.ts** — 模型图标映射新增 58: 'Volcengine'
-3. **web/default/src/i18n/locales/en.json** — 新增 "VolcEngineAIGC" i18n key
-4. **web/default/src/i18n/locales/zh.json** — 新增 "VolcEngineAIGC" i18n key（"字节火山-虚拟人像"）
+1. AIGC 素材接口复用现有 VolcEngine（type=45）渠道配置，不增加独立渠道入口
 
 ## 数据库变更
 - 新建表 `aigc_asset_group_mappings` — 记录用户与虚拟人像 Asset Group 的绑定关系

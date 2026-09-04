@@ -55,12 +55,10 @@ const (
 	ChannelTypeSora           = 55
 	ChannelTypeReplicate      = 56
 	ChannelTypeCodex          = 57
-	// 58-61 are already used by fork deployments; keep these IDs stable.
-	ChannelTypeVolcEngineAIGC = 58
-	ChannelTypeAdvancedCustom = 59
-	ChannelTypeSub2API        = 60
-	ChannelTypeNewAPI         = 61
-	ChannelTypeTaskPlugin     = 62
+	ChannelTypeAdvancedCustom = 58
+	ChannelTypeSub2API        = 59
+	ChannelTypeNewAPI         = 60
+	ChannelTypeTaskPlugin     = 61
 	ChannelTypeDummy          // this one is only for count, do not add any channel after this
 
 )
@@ -124,11 +122,10 @@ var ChannelBaseURLs = []string{
 	"https://api.openai.com",                    //55
 	"https://api.replicate.com",                 //56
 	"https://chatgpt.com",                       //57
-	"https://ark.cn-beijing.volces.com",         //58 VolcEngineAIGC
+	"",                                          //58
 	"",                                          //59
 	"",                                          //60
 	"",                                          //61
-	"",                                          //62
 }
 
 func GetChannelBaseURL(channelType int) string {
@@ -193,7 +190,6 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeSora:           "Sora",
 	ChannelTypeReplicate:      "Replicate",
 	ChannelTypeCodex:          "ChatGPT Subscription (Codex)",
-	ChannelTypeVolcEngineAIGC: "VolcEngineAIGC",
 	ChannelTypeAdvancedCustom: "Advanced Custom",
 	ChannelTypeSub2API:        "Sub2API",
 	ChannelTypeNewAPI:         "New API",
