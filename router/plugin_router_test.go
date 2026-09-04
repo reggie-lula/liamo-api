@@ -337,7 +337,7 @@ func TestPluginStaticRouteConflictsAreExcluded(t *testing.T) {
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			outer := newOuterPluginTestEngine()
-			outer.GET(testCase.staticPath, func(c *gin.Context) { c.String(http.StatusOK, "static") })
+			outer.POST(testCase.staticPath, func(c *gin.Context) { c.String(http.StatusOK, "static") })
 			registry := jsplugin.NewRegistry()
 			plugin := compileRouterPlugin(t, "static-conflict", "1.0.0", fmt.Sprintf(`[
 				{method: "POST", path: %q, type: "submit"}
@@ -354,16 +354,41 @@ func TestPluginStaticRouteConflictsAreExcluded(t *testing.T) {
 				func(c *gin.Context) { c.String(http.StatusOK, "fallback") },
 			)
 
-			recorder := performPluginRequest(outer, http.MethodPost, testCase.pluginPath)
-			assert.Equal(t, "fallback", recorder.Body.String())
+			_, found := registry.Generation().LookupDeclaredRoute(http.MethodPost, testCase.pluginPath)
+			assert.False(t, found)
 			assert.Contains(t, registry.RoutingErrors()["static-conflict"], "intersects static route")
 		})
 	}
 }
 
+func TestPluginStaticRouteWithDifferentMethodCanCoexist(t *testing.T) {
+	const path = "/s1/video/generations/:task_id"
+	outer := newOuterPluginTestEngine()
+	outer.DELETE(path, func(c *gin.Context) { c.String(http.StatusOK, "static") })
+	registry := jsplugin.NewRegistry()
+	plugin := compileRouterPlugin(t, "method-split", "1.0.0", `[
+		{method: "GET", path: "/s1/video/generations/:task_id", type: "query", render: "native"}
+	]`)
+	require.NoError(t, registry.ReplaceOverrides([]*jsplugin.LoadedPlugin{plugin}))
+	builder := newPluginGenerationBuilder(outer.Routes(), nil, testPluginRouteHandlers(
+		func(c *gin.Context, _ *jsplugin.RoutingGeneration, binding jsplugin.RouteBinding) {
+			c.String(http.StatusOK, binding.Plugin.Meta.Key)
+		},
+	))
+	require.NoError(t, registry.SetGenerationPreparer(builder.prepare))
+	outer.NoRoute(
+		(&pluginRouteDispatcher{registry: registry}).dispatch,
+		func(c *gin.Context) { c.String(http.StatusOK, "fallback") },
+	)
+
+	assert.Equal(t, "method-split", performPluginRequest(outer, http.MethodGet, "/s1/video/generations/task-1").Body.String())
+	assert.Equal(t, "static", performPluginRequest(outer, http.MethodDelete, "/s1/video/generations/task-1").Body.String())
+	assert.Empty(t, registry.RoutingErrors())
+}
+
 func TestStaticConflictingUpdateRetainsIncumbentAndPublishesHealthyPeer(t *testing.T) {
 	outer := newOuterPluginTestEngine()
-	outer.GET("/core/:id", func(c *gin.Context) { c.String(http.StatusOK, "static") })
+	outer.POST("/core/:id", func(c *gin.Context) { c.String(http.StatusOK, "static") })
 	registry := jsplugin.NewRegistry()
 	incumbent := compileRouterPlugin(t, "static-update", "1.0.0", `[
 		{method: "GET", path: "/safe/incumbent", type: "dynamic"}
@@ -403,7 +428,7 @@ func TestStaticConflictingUpdateRetainsIncumbentAndPublishesHealthyPeer(t *testi
 
 func TestStaticConflictingNewOverrideRetainsFactoryRoute(t *testing.T) {
 	outer := newOuterPluginTestEngine()
-	outer.GET("/core/:id", func(c *gin.Context) { c.String(http.StatusOK, "static") })
+	outer.POST("/core/:id", func(c *gin.Context) { c.String(http.StatusOK, "static") })
 	registry := jsplugin.NewRegistry()
 	factory, err := registry.RegisterFactory(routerPluginSource("factory-route", "1.0.0", `[
 		{method: "GET", path: "/factory-route/safe", type: "dynamic"}

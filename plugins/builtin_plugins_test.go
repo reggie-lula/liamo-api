@@ -31,6 +31,8 @@ func TestBuiltInVendorPluginsDeclareNativeRoutesAndLegacyChannelTypes(t *testing
 		{"GET", "/suno/fetch/:task_id", "sunoapi", jsplugin.RouteTypeQuery, "", "renderTask"},
 		{"POST", "/doubao/api/v3/contents/generations/tasks", "doubao", jsplugin.RouteTypeSubmit, "", "taskCreated"},
 		{"GET", "/doubao/api/v3/contents/generations/tasks/:task_id", "doubao", jsplugin.RouteTypeQuery, "", "taskStatus"},
+		{"POST", "/s1/video/generations", "doubao", jsplugin.RouteTypeSubmit, "", "taskCreated"},
+		{"GET", "/s1/video/generations/:task_id", "doubao", jsplugin.RouteTypeQuery, "", "taskStatus"},
 	}
 	for _, expected := range routes {
 		t.Run(expected.method+" "+expected.path, func(t *testing.T) {

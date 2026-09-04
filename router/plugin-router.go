@@ -220,6 +220,9 @@ func (b *pluginGenerationBuilder) admitPlugins(
 func (b *pluginGenerationBuilder) validatePlugin(plugin *jsplugin.LoadedPlugin, accepted map[string]*jsplugin.LoadedPlugin) error {
 	for _, route := range plugin.Meta.Routes {
 		for _, staticRoute := range b.staticRoutes {
+			if route.Method != staticRoute.Method {
+				continue
+			}
 			if routeIntersectsStaticRoute(route.Path, staticRoute.Path) {
 				return fmt.Errorf("route %s %s intersects static route %s %s", route.Method, route.Path, staticRoute.Method, staticRoute.Path)
 			}
