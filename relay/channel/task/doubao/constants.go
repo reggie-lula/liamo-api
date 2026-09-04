@@ -180,3 +180,34 @@ func GetSeedanceTierPriceWithDiscount(modelName, tierKey string, now time.Time) 
 	}
 	return price * seedanceDiscountMultiplier(modelName, tierKey, now), true
 }
+
+// GetSeedanceTierPriceForUsage resolves the effective token price for a
+// validated task-plugin usage record. Unsupported high-resolution entries
+// retain the legacy fallback to the model's low tier.
+func GetSeedanceTierPriceForUsage(modelName, resolution string, hasVideo bool, now time.Time) (string, float64, bool) {
+	tier := "low"
+	switch strings.ToLower(strings.TrimSpace(resolution)) {
+	case "1080p":
+		tier = "high"
+	case "4k":
+		tier = "ultra"
+	}
+
+	key := tier
+	if hasVideo {
+		key += "_video"
+	}
+	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, key, now); ok {
+		return key, price, true
+	}
+
+	lowKey := "low"
+	if hasVideo {
+		lowKey = "low_video"
+	}
+	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, lowKey, now); ok {
+		return lowKey, price, true
+	}
+	price, ok := GetSeedanceTierPriceWithDiscount(modelName, "low", now)
+	return "low", price, ok
+}

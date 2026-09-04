@@ -238,9 +238,9 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 		return taskErr
 	}
 
-	action := constant.TaskActionTextGenerate
+	action := constant.TaskActionTextToVideo
 	if hasInputReference {
-		action = constant.TaskActionGenerate
+		action = constant.TaskActionImageToVideo
 	}
 	if strings.HasPrefix(model, "sora-2") {
 
@@ -345,7 +345,13 @@ func ValidateSeedanceTaskRequest(c *gin.Context, info *RelayInfo) *dto.TaskError
 		return createTaskError(fmt.Errorf("content must contain at least one text item"), "missing_text_content", http.StatusBadRequest, true)
 	}
 
-	info.Action = constant.TaskActionGenerate
+	info.Action = constant.TaskActionTextToVideo
+	for _, item := range req.Content {
+		if item.Type != "text" {
+			info.Action = constant.TaskActionImageToVideo
+			break
+		}
+	}
 	c.Set("seedance_request", req)
 	return nil
 }

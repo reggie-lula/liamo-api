@@ -83,7 +83,7 @@ describe('New API channel', () => {
   test('keeps Sub2API Base URL validation unchanged', () => {
     const result = channelFormSchema.safeParse({
       ...newAPIForm(''),
-      type: 59,
+      type: 60,
     })
 
     expect(result.success).toBe(true)
