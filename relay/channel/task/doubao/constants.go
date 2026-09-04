@@ -102,11 +102,11 @@ func GetSeedanceTierPrice(modelName string) (map[string]float64, bool) {
 }
 
 // seedanceLimitedDiscountRule 描述自定义补丁维护的限时折扣。
-// 起止日期均按北京时间计算，并且首尾日期都包含在生效范围内。
+// 起止时间均按北京时间配置，生效区间为 [startAt, endAt)。
 type seedanceLimitedDiscountRule struct {
 	modelName  string
-	startDate  time.Time
-	endDate    time.Time
+	startAt    time.Time
+	endAt      time.Time
 	tierKeys   map[string]struct{}
 	multiplier float64
 }
@@ -116,20 +116,20 @@ var seedanceBeijingLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
 var seedanceLimitedDiscountRules = []seedanceLimitedDiscountRule{
 	{
 		modelName:  "doubao-seedance-2-0-mini-260615",
-		startDate:  time.Date(2026, time.August, 7, 0, 0, 0, 0, seedanceBeijingLocation),
-		endDate:    time.Date(2026, time.September, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		startAt:    time.Date(2026, time.August, 7, 14, 0, 0, 0, seedanceBeijingLocation),
+		endAt:      time.Date(2026, time.October, 7, 14, 0, 0, 0, seedanceBeijingLocation),
 		multiplier: 0.4,
 	},
 	{
 		modelName:  "doubao-seedance-2-0-fast-260128",
-		startDate:  time.Date(2026, time.August, 7, 0, 0, 0, 0, seedanceBeijingLocation),
-		endDate:    time.Date(2026, time.September, 7, 0, 0, 0, 0, seedanceBeijingLocation),
+		startAt:    time.Date(2026, time.August, 7, 14, 0, 0, 0, seedanceBeijingLocation),
+		endAt:      time.Date(2026, time.October, 7, 14, 0, 0, 0, seedanceBeijingLocation),
 		multiplier: 0.75,
 	},
 	{
 		modelName: "doubao-seedance-2-5-260628",
-		startDate: time.Date(2026, time.August, 18, 0, 0, 0, 0, seedanceBeijingLocation),
-		endDate:   time.Date(2026, time.September, 17, 0, 0, 0, 0, seedanceBeijingLocation),
+		startAt:   time.Date(2026, time.August, 14, 14, 0, 0, 0, seedanceBeijingLocation),
+		endAt:     time.Date(2026, time.October, 17, 14, 0, 0, 0, seedanceBeijingLocation),
 		tierKeys: map[string]struct{}{
 			"high":       {},
 			"high_video": {},
@@ -142,19 +142,9 @@ var seedanceLimitedDiscountRules = []seedanceLimitedDiscountRule{
 // 空 tierKeys 表示该模型当前已配置的所有档位都适用。
 func seedanceDiscountMultiplier(modelName, tierKey string, now time.Time) float64 {
 	beijingNow := now.In(seedanceBeijingLocation)
-	currentDate := time.Date(
-		beijingNow.Year(),
-		beijingNow.Month(),
-		beijingNow.Day(),
-		0,
-		0,
-		0,
-		0,
-		seedanceBeijingLocation,
-	)
 
 	for _, rule := range seedanceLimitedDiscountRules {
-		if rule.modelName != modelName || currentDate.Before(rule.startDate) || currentDate.After(rule.endDate) {
+		if rule.modelName != modelName || beijingNow.Before(rule.startAt) || !beijingNow.Before(rule.endAt) {
 			continue
 		}
 		if len(rule.tierKeys) > 0 {

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,7 +60,7 @@ func TestSeedanceVideoInputRatios(t *testing.T) {
 	require.InDelta(t, 14.0/23.0, ratio, 0.000001)
 }
 
-func TestSeedanceLimitedDiscountsUseBeijingDates(t *testing.T) {
+func TestSeedanceLimitedDiscountsUseBeijingTimeRange(t *testing.T) {
 	tests := []struct {
 		name      string
 		modelName string
@@ -68,45 +69,59 @@ func TestSeedanceLimitedDiscountsUseBeijingDates(t *testing.T) {
 		want      float64
 	}{
 		{
-			name:      "mini discount starts at Beijing midnight",
+			name:      "mini is full price immediately before start",
 			modelName: "doubao-seedance-2-0-mini-260615",
 			tierKey:   "low",
-			at:        time.Date(2026, time.August, 6, 16, 0, 0, 0, time.UTC),
-			want:      23.0 * 0.4,
-		},
-		{
-			name:      "fast discount applies to video input",
-			modelName: "doubao-seedance-2-0-fast-260128",
-			tierKey:   "low_video",
-			at:        time.Date(2026, time.September, 7, 15, 59, 59, 0, time.UTC),
-			want:      22.0 * 0.75,
-		},
-		{
-			name:      "mini discount ends after Beijing end date",
-			modelName: "doubao-seedance-2-0-mini-260615",
-			tierKey:   "low",
-			at:        time.Date(2026, time.September, 7, 16, 0, 0, 0, time.UTC),
+			at:        time.Date(2026, time.August, 7, 13, 59, 59, 0, seedanceBeijingLocation),
 			want:      23.0,
 		},
 		{
-			name:      "2.5 high tier receives discount",
+			name:      "mini discount starts at Beijing 14:00",
+			modelName: "doubao-seedance-2-0-mini-260615",
+			tierKey:   "low",
+			at:        time.Date(2026, time.August, 7, 6, 0, 0, 0, time.UTC),
+			want:      23.0 * 0.4,
+		},
+		{
+			name:      "fast discount applies through final second",
+			modelName: "doubao-seedance-2-0-fast-260128",
+			tierKey:   "low_video",
+			at:        time.Date(2026, time.October, 7, 13, 59, 59, 0, seedanceBeijingLocation),
+			want:      22.0 * 0.75,
+		},
+		{
+			name:      "mini discount ends at Beijing 14:00",
+			modelName: "doubao-seedance-2-0-mini-260615",
+			tierKey:   "low",
+			at:        time.Date(2026, time.October, 7, 14, 0, 0, 0, seedanceBeijingLocation),
+			want:      23.0,
+		},
+		{
+			name:      "2.5 high tier discount starts at Beijing 14:00",
 			modelName: "doubao-seedance-2-5-260628",
 			tierKey:   "high",
-			at:        time.Date(2026, time.August, 18, 0, 0, 0, 0, seedanceBeijingLocation),
+			at:        time.Date(2026, time.August, 14, 14, 0, 0, 0, seedanceBeijingLocation),
 			want:      77.0 * 0.72,
 		},
 		{
 			name:      "2.5 low tier is not discounted",
 			modelName: "doubao-seedance-2-5-260628",
 			tierKey:   "low",
-			at:        time.Date(2026, time.August, 18, 0, 0, 0, 0, seedanceBeijingLocation),
+			at:        time.Date(2026, time.August, 14, 14, 0, 0, 0, seedanceBeijingLocation),
 			want:      70.0,
 		},
 		{
-			name:      "2.5 discount ends after Beijing end date",
+			name:      "2.5 discount applies through final second",
 			modelName: "doubao-seedance-2-5-260628",
 			tierKey:   "high_video",
-			at:        time.Date(2026, time.September, 17, 16, 0, 0, 0, time.UTC),
+			at:        time.Date(2026, time.October, 17, 13, 59, 59, 0, seedanceBeijingLocation),
+			want:      46.0 * 0.72,
+		},
+		{
+			name:      "2.5 discount ends at Beijing 14:00",
+			modelName: "doubao-seedance-2-5-260628",
+			tierKey:   "high_video",
+			at:        time.Date(2026, time.October, 17, 14, 0, 0, 0, seedanceBeijingLocation),
 			want:      46.0,
 		},
 	}
@@ -115,7 +130,7 @@ func TestSeedanceLimitedDiscountsUseBeijingDates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			price, ok := GetSeedanceTierPriceWithDiscount(tt.modelName, tt.tierKey, tt.at)
 			require.True(t, ok)
-			require.InDelta(t, tt.want, price, 0.000001)
+			assert.InDelta(t, tt.want, price, 0.000001)
 		})
 	}
 }
