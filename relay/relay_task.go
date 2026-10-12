@@ -284,7 +284,7 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 		if useSeedancePricing {
 			resolution, _ := facts["resolution"].(string)
 			hasVideo := facts["video_input"] == "video"
-			tierName, price, ok := taskdoubao.GetSeedanceTierPriceForUsage(modelName, resolution, hasVideo, time.Now())
+			tierName, price, ok := taskdoubao.GetSeedanceTierPriceForUsage(modelName, resolution, hasVideo, info.UserId, time.Now())
 			if !ok || price <= 0 {
 				return nil, service.TaskErrorWrapper(fmt.Errorf("task model %s has no Seedance tier price", modelName), "model_price_error", http.StatusBadRequest)
 			}

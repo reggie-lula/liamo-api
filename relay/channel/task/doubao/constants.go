@@ -113,6 +113,12 @@ type seedanceLimitedDiscountRule struct {
 
 var seedanceBeijingLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
 
+// 指定用户活动独立于通用限时活动；命中时直接使用基础价折扣，不叠加通用活动。
+var seedanceUserDiscountUserIDs = map[int]struct{}{1: {}, 2: {}, 6: {}}
+
+// 使用次日零点作为排他结束时间，覆盖北京时间 2027-06-30 的最后一秒。
+var seedanceUserDiscountEndAt = time.Date(2027, time.July, 1, 0, 0, 0, 0, seedanceBeijingLocation)
+
 var seedanceLimitedDiscountRules = []seedanceLimitedDiscountRule{
 	{
 		modelName:  "doubao-seedance-2-0-mini-260615",
@@ -158,8 +164,9 @@ func seedanceDiscountMultiplier(modelName, tierKey string, now time.Time) float6
 }
 
 // GetSeedanceTierPriceWithDiscount 返回计费时应使用的有效分档价格。
-// GetSeedanceTierPrice 始终返回基础价，便于保留官方价格和记录；限时折扣只在计费路径中按当前北京时间叠加。
-func GetSeedanceTierPriceWithDiscount(modelName, tierKey string, now time.Time) (float64, bool) {
+// 指定用户活动优先于通用活动；未命中或过期后沿用通用活动。
+// userID 必须来自认证后的调用用户，不得从请求参数读取。
+func GetSeedanceTierPriceWithDiscount(modelName, tierKey string, userID int, now time.Time) (float64, bool) {
 	prices, ok := GetSeedanceTierPrice(modelName)
 	if !ok {
 		return 0, false
@@ -168,13 +175,21 @@ func GetSeedanceTierPriceWithDiscount(modelName, tierKey string, now time.Time) 
 	if !ok {
 		return 0, false
 	}
+	if _, eligible := seedanceUserDiscountUserIDs[userID]; eligible && now.Before(seedanceUserDiscountEndAt) {
+		switch modelName {
+		case "doubao-seedance-2-0-fast-260128":
+			return price * 0.5, true
+		case "doubao-seedance-2-0-mini-260615":
+			return price * 0.4, true
+		}
+	}
 	return price * seedanceDiscountMultiplier(modelName, tierKey, now), true
 }
 
 // GetSeedanceTierPriceForUsage resolves the effective token price for a
 // validated task-plugin usage record. Unsupported high-resolution entries
 // retain the legacy fallback to the model's low tier.
-func GetSeedanceTierPriceForUsage(modelName, resolution string, hasVideo bool, now time.Time) (string, float64, bool) {
+func GetSeedanceTierPriceForUsage(modelName, resolution string, hasVideo bool, userID int, now time.Time) (string, float64, bool) {
 	tier := "low"
 	switch strings.ToLower(strings.TrimSpace(resolution)) {
 	case "1080p":
@@ -187,7 +202,7 @@ func GetSeedanceTierPriceForUsage(modelName, resolution string, hasVideo bool, n
 	if hasVideo {
 		key += "_video"
 	}
-	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, key, now); ok {
+	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, key, userID, now); ok {
 		return key, price, true
 	}
 
@@ -195,9 +210,9 @@ func GetSeedanceTierPriceForUsage(modelName, resolution string, hasVideo bool, n
 	if hasVideo {
 		lowKey = "low_video"
 	}
-	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, lowKey, now); ok {
+	if price, ok := GetSeedanceTierPriceWithDiscount(modelName, lowKey, userID, now); ok {
 		return lowKey, price, true
 	}
-	price, ok := GetSeedanceTierPriceWithDiscount(modelName, "low", now)
+	price, ok := GetSeedanceTierPriceWithDiscount(modelName, "low", userID, now)
 	return "low", price, ok
 }
